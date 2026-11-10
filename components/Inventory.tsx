@@ -157,7 +157,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, onAdd, onUpdate, onDele
                           <Edit3 size={18} />
                         </button>
                         <button 
-                          onClick={() => { if(confirm('¿Eliminar producto de forma permanente?')) onDelete(product.id); }}
+                          onClick={() => onDelete(product.id)}
                           className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-xl shadow-sm border border-transparent hover:border-slate-200 transition-all"
                         >
                           <Trash2 size={18} />
