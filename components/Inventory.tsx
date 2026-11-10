@@ -25,14 +25,24 @@ const Inventory: React.FC<InventoryProps> = ({ products, onAdd, onUpdate, onDele
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const productData = {
-      name: formData.get('name') as string,
+      name: (formData.get('name') as string).trim(),
       price: Number(formData.get('price')),
       cost: Number(formData.get('cost')),
       stock: Number(formData.get('stock')),
       minStock: Number(formData.get('minStock')),
-      category: formData.get('category') as string,
-      barcode: formData.get('barcode') as string,
+      category: (formData.get('category') as string).trim(),
+      barcode: (formData.get('barcode') as string).trim(),
     };
+    if (!productData.name || !productData.category || !productData.barcode ||
+        !Number.isFinite(productData.price) || productData.price <= 0 ||
+        !Number.isFinite(productData.cost) || productData.cost < 0 ||
+        !Number.isInteger(productData.stock) || productData.stock < 0 ||
+        !Number.isInteger(productData.minStock) || productData.minStock < 0) {
+      alert('Revisá los datos: precio mayor a cero, costo y stock sin valores negativos; cantidades enteras.'); return;
+    }
+    if (products.some(p => p.barcode === productData.barcode && p.id !== editingProduct?.id)) {
+      alert('Ya existe un producto con ese código de barras/SKU.'); return;
+    }
 
     if (editingProduct) {
       onUpdate(editingProduct.id, productData);
@@ -90,7 +100,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, onAdd, onUpdate, onDele
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredProducts.map(product => {
-                const margin = product.price > 0 ? ((product.price - product.cost) / product.price * 100).toFixed(0) : '0';
+                const margin = product.price > 0 ? ((product.price - product.cost) / product.price * 100).toFixed(0) : '—';
                 const isLowStock = product.stock <= product.minStock;
                 return (
                   <tr key={product.id} className="hover:bg-slate-50/70 transition-colors group">
@@ -202,29 +212,28 @@ const Inventory: React.FC<InventoryProps> = ({ products, onAdd, onUpdate, onDele
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Costo Unitario</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                    <input name="cost" type="number" step="0.01" defaultValue={editingProduct?.cost} required className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-8 pr-5 py-3.5 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold" />
+                    <input name="cost" type="number" min="0" step="0.01" defaultValue={editingProduct?.cost} required className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-8 pr-5 py-3.5 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold" />
                   </div>
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Precio de Venta</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                    <input name="price" type="number" step="0.01" defaultValue={editingProduct?.price} required className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-8 pr-5 py-3.5 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold" />
+                    <input name="price" type="number" min="0.01" step="0.01" defaultValue={editingProduct?.price} required className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-8 pr-5 py-3.5 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold" />
                   </div>
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Stock Inicial</label>
-                  <input name="stock" type="number" defaultValue={editingProduct?.stock} required className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold" />
+                  <input name="stock" type="number" min="0" step="1" defaultValue={editingProduct?.stock} required className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Mínimo Crítico</label>
-                  <input name="minStock" type="number" defaultValue={editingProduct?.minStock} required className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold" />
+                  <input name="minStock" type="number" min="0" step="1" defaultValue={editingProduct?.minStock} required className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Categoría</label>
-                  <select name="category" defaultValue={editingProduct?.category} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold appearance-none">
-                    {INITIAL_CATEGORIES.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                  </select>
+                  <input name="category" list="product-categories" defaultValue={editingProduct?.category} required className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold" placeholder="Elegí o escribí una categoría" />
+                  <datalist id="product-categories">{Array.from(new Set([...INITIAL_CATEGORIES.map(c=>c.name),...products.map(p=>p.category)])).map(name => <option key={name} value={name}/>)}</datalist>
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">SKU / Código Barras</label>

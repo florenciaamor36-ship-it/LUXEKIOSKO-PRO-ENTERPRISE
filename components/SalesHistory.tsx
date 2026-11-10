@@ -1,102 +1,17 @@
-
-import React from 'react';
-import { Sale } from '../types';
-import { Clock, Tag, CreditCard, Banknote, Landmark, ExternalLink } from 'lucide-react';
-
-interface SalesHistoryProps {
-  sales: Sale[];
+import React,{useMemo,useState} from 'react';
+import {Sale} from '../types';
+import {Clock,Search,Download,Eye,RotateCcw} from 'lucide-react';
+interface Props{sales:Sale[];onVoid:(id:string,reason:string)=>void}
+const cash=(n:number)=>`$${n.toLocaleString('es-AR')}`;
+export default function SalesHistory({sales,onVoid}:Props){
+ const [query,setQuery]=useState('');const [method,setMethod]=useState('all');const [from,setFrom]=useState('');const [to,setTo]=useState('');const [detail,setDetail]=useState<Sale|null>(null);
+ const visible=useMemo(()=>[...sales].sort((a,b)=>b.timestamp.getTime()-a.timestamp.getTime()).filter(s=>{
+  let q=query.toLowerCase();let match=!q||s.id.toLowerCase().includes(q)||s.items.some(i=>i.name.toLowerCase().includes(q));let d=s.timestamp.toISOString().slice(0,10);
+  return match&&(method==='all'||s.paymentMethod===method)&&s.status!=='voided'&&(!from||d>=from)&&(!to||d<=to);
+ }),[sales,query,method,from,to]);
+ const exportCsv=()=>{let rows=[['ID','Fecha','Estado','Productos','Pago','Total'],...visible.map(s=>[s.id,s.timestamp.toLocaleString('es-AR'),s.status==='voided'?'Anulada':'Completada',s.items.map(i=>`${i.quantity}x ${i.name}`).join('; '),s.paymentMethod,s.total.toFixed(2)])];let csv=rows.map(r=>r.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));a.download='ventas.csv';a.click();URL.revokeObjectURL(a.href)};
+ return <section className="space-y-6"><header className="flex flex-wrap justify-between gap-3"><div><h1 className="text-3xl font-black">Historial de ventas</h1><p className="text-slate-500">Consultá, revisá y exportá los tickets internos.</p></div><button onClick={exportCsv} className="bg-indigo-600 text-white rounded-xl px-4 py-3 font-bold flex gap-2"><Download/> Exportar CSV</button></header>
+ <div className="bg-white p-4 rounded-2xl border grid md:grid-cols-5 gap-3"><input className="border rounded-lg p-3 md:col-span-2" placeholder="Buscar ticket o producto" value={query} onChange={e=>setQuery(e.target.value)}/><select className="border rounded-lg p-3" value={method} onChange={e=>setMethod(e.target.value)}><option value="all">Todos los pagos</option><option value="cash">Efectivo</option><option value="card">Tarjeta</option><option value="transfer">Transferencia</option></select><input className="border rounded-lg p-3" type="date" value={from} onChange={e=>setFrom(e.target.value)}/><input className="border rounded-lg p-3" type="date" value={to} onChange={e=>setTo(e.target.value)}/></div>
+ <div className="bg-white rounded-2xl border overflow-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50"><tr>{['Fecha','Ticket','Productos','Pago','Total','Estado','Acciones'].map(x=><th key={x} className="p-4">{x}</th>)}</tr></thead><tbody>{visible.map(s=><tr key={s.id} className="border-t"><td className="p-4"><Clock size={14} className="inline mr-2"/>{s.timestamp.toLocaleString('es-AR')}</td><td className="p-4 font-bold">{s.id}</td><td className="p-4">{s.items.map(i=>`${i.quantity}× ${i.name}`).join(', ')}</td><td className="p-4">{s.paymentMethod}</td><td className="p-4 font-bold">{cash(s.total)}</td><td className="p-4">{s.status==='voided'?'Anulada':'Completada'}</td><td className="p-4 flex gap-2"><button title="Ver detalle" onClick={()=>setDetail(s)} className="text-indigo-600"><Eye/></button>{s.status!=='voided'&&<button title="Anular conservando registro" onClick={()=>{let reason=prompt('Motivo de anulación (obligatorio):');if(reason?.trim())onVoid(s.id,reason.trim())}} className="text-rose-600"><RotateCcw/></button>}</td></tr>)}{!visible.length&&<tr><td colSpan={7} className="p-12 text-center text-slate-500">No hay ventas con esos filtros.</td></tr>}</tbody></table></div>
+ {detail&&<div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={()=>setDetail(null)}><article className="bg-white p-6 rounded-2xl max-w-lg w-full space-y-4" onClick={e=>e.stopPropagation()}><div className="flex justify-between"><h2 className="font-black text-xl">Ticket interno · {detail.id}</h2><button onClick={()=>setDetail(null)}>✕</button></div><p>{detail.timestamp.toLocaleString('es-AR')} · {detail.paymentMethod} · {detail.status==='voided'?'ANULADA':'Completada'}</p>{detail.items.map((i,n)=><p key={n} className="flex justify-between border-b py-2"><span>{i.quantity}× {i.name} @ {cash(i.price)}</span><b>{cash(i.total)}</b></p>)}<p className="text-right font-black text-xl">Total: {cash(detail.total)}</p>{detail.voidReason&&<p>Motivo anulación: {detail.voidReason}</p>}<p className="text-xs text-amber-700 bg-amber-50 p-3 rounded">Comprobante interno. No es factura fiscal ni comprobante autorizado por ARCA.</p></article></div>}</section>
 }
-
-const SalesHistory: React.FC<SalesHistoryProps> = ({ sales }) => {
-  const sortedSales = [...sales].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
-  const getPaymentIcon = (method: Sale['paymentMethod']) => {
-    switch(method) {
-      case 'cash': return <Banknote size={16} className="text-green-600" />;
-      case 'card': return <CreditCard size={16} className="text-blue-600" />;
-      case 'transfer': return <Landmark size={16} className="text-purple-600" />;
-    }
-  };
-
-  const getPaymentLabel = (method: Sale['paymentMethod']) => {
-    switch(method) {
-      case 'cash': return 'Efectivo';
-      case 'card': return 'Tarjeta';
-      case 'transfer': return 'Transferencia';
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800">Historial de Ventas</h1>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500 font-medium">
-              <tr>
-                <th className="px-6 py-4">Fecha y Hora</th>
-                <th className="px-6 py-4">Productos</th>
-                <th className="px-6 py-4">Método de Pago</th>
-                <th className="px-6 py-4">Total</th>
-                <th className="px-6 py-4 text-right">Detalle</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {sortedSales.map(sale => (
-                <tr key={sale.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <Clock size={16} className="text-gray-400" />
-                      <div>
-                        <p className="font-medium text-gray-800">{sale.timestamp.toLocaleDateString()}</p>
-                        <p className="text-xs text-gray-400">{sale.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
-                      {sale.items.slice(0, 2).map((item, i) => (
-                        <span key={i} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">
-                          {item.quantity}x {item.name}
-                        </span>
-                      ))}
-                      {sale.items.length > 2 && (
-                        <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold">
-                          +{sale.items.length - 2} más
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      {getPaymentIcon(sale.paymentMethod)}
-                      <span className="text-xs font-medium">{getPaymentLabel(sale.paymentMethod)}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="font-bold text-gray-800">${sale.total.toLocaleString()}</span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors">
-                      <ExternalLink size={18} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {sales.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-20 text-center text-gray-400">
-                    Aún no se han registrado ventas.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default SalesHistory;

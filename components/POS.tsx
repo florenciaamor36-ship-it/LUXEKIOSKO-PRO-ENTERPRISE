@@ -117,7 +117,7 @@ const POS: React.FC<POSProps> = ({
             <button
               key={reg.id}
               onClick={() => onSelectRegister(reg.id)}
-              className="group bg-white p-8 rounded-[2.5rem] border border-slate-200/60 shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-2 transition-all duration-300 text-left flex flex-col items-center"
+              disabled={!reg.isOpen} className={`group bg-white p-8 rounded-[2.5rem] border border-slate-200/60 shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-2 transition-all duration-300 text-left flex flex-col items-center disabled:opacity-60 disabled:cursor-not-allowed`}
             >
               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
                 <Monitor size={32} />
@@ -127,11 +127,11 @@ const POS: React.FC<POSProps> = ({
               
               <div className="w-full pt-4 border-t border-slate-100 flex justify-between items-center">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">Balance</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Efectivo en caja</span>
                   <span className="text-xl font-black text-slate-900">${reg.balance.toLocaleString()}</span>
                 </div>
                 <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${reg.cart.length > 0 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                  {reg.cart.length > 0 ? `${reg.cart.length} Pendientes` : 'Disponible'}
+                  {!reg.isOpen ? 'Caja cerrada' : reg.cart.length > 0 ? `${reg.cart.length} Pendientes` : 'Abierta'}
                 </div>
               </div>
             </button>
@@ -333,18 +333,13 @@ const POS: React.FC<POSProps> = ({
                 </div>
                 <div className="flex justify-between text-[10px]">
                   <span className="uppercase">Pago: {completedSale.paymentMethod}</span>
-                  <span>IVA Incl.</span>
+                  <span>COMPROBANTE INTERNO · NO FISCAL</span>
                 </div>
               </div>
 
               <div className="text-center pt-6 space-y-4">
                 <p className="text-[10px] font-bold uppercase tracking-widest">¡GRACIAS POR SU COMPRA!</p>
-                <div className="flex justify-center h-12">
-                   {/* Mock Barcode */}
-                   <div className="w-full bg-slate-100 flex items-center justify-center rounded">
-                     <span className="text-[8px] text-slate-400">|| |||| || ||| ||| ||| || |||</span>
-                   </div>
-                </div>
+                <p className="text-[9px] text-slate-500">Ticket de control interno; no válido como factura.</p>
               </div>
             </div>
 

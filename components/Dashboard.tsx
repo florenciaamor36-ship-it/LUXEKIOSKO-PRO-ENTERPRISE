@@ -12,7 +12,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ products, sales, registers }) => {
   const today = new Date().setHours(0, 0, 0, 0);
-  const todaySales = sales.filter(s => new Date(s.timestamp).setHours(0, 0, 0, 0) === today);
+  const todaySales = sales.filter(s => s.status !== 'voided' && new Date(s.timestamp).setHours(0, 0, 0, 0) === today);
   const totalRevenue = todaySales.reduce((acc, s) => acc + s.total, 0);
   
   const lowStockProducts = products.filter(p => p.stock <= p.minStock);
@@ -22,7 +22,7 @@ const Dashboard: React.FC<DashboardProps> = ({ products, sales, registers }) => 
     d.setDate(d.getDate() - (6 - i));
     const dayStr = d.toLocaleDateString('es-ES', { weekday: 'short' });
     const dayTotal = sales
-      .filter(s => new Date(s.timestamp).toDateString() === d.toDateString())
+      .filter(s => s.status !== 'voided' && new Date(s.timestamp).toDateString() === d.toDateString())
       .reduce((acc, s) => acc + s.total, 0);
     return { name: dayStr, total: dayTotal };
   });

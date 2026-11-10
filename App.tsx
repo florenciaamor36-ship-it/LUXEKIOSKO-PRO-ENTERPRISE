@@ -1,132 +1,42 @@
-
-import React, { useState, useEffect } from 'react';
-import { Product, Sale, AppView, SaleItem, RegisterSession } from './types';
-import { INITIAL_PRODUCTS, NAVIGATION_ITEMS } from './constants';
-import Sidebar from './components/Sidebar';
-import Dashboard from './components/Dashboard';
-import Inventory from './components/Inventory';
-import POS from './components/POS';
-import SalesHistory from './components/SalesHistory';
-import AIConsultant from './components/AIConsultant';
-import { Toaster, toast } from 'react-hot-toast';
-
-const INITIAL_REGISTERS: RegisterSession[] = [
-  { id: '1', name: 'Terminal 01', cart: [], balance: 0 },
-  { id: '2', name: 'Terminal 02', cart: [], balance: 0 },
-  { id: '3', name: 'Terminal 03', cart: [], balance: 0 },
-  { id: '4', name: 'Terminal 04', cart: [], balance: 0 },
-  { id: '5', name: 'Terminal 05', cart: [], balance: 0 },
-];
-
-const App: React.FC = () => {
-  const [view, setView] = useState<AppView>(AppView.DASHBOARD);
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('kiosk_products');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
-  });
-  const [sales, setSales] = useState<Sale[]>(() => {
-    const saved = localStorage.getItem('kiosk_sales');
-    if (!saved) return [];
-    const parsed = JSON.parse(saved);
-    return parsed.map((s: any) => ({ ...s, timestamp: new Date(s.timestamp) }));
-  });
-  const [registers, setRegisters] = useState<RegisterSession[]>(() => {
-    const saved = localStorage.getItem('kiosk_registers');
-    return saved ? JSON.parse(saved) : INITIAL_REGISTERS;
-  });
-  const [activeRegisterId, setActiveRegisterId] = useState<string | null>(null);
-
-  useEffect(() => {
-    localStorage.setItem('kiosk_products', JSON.stringify(products));
-  }, [products]);
-
-  useEffect(() => {
-    localStorage.setItem('kiosk_sales', JSON.stringify(sales));
-  }, [sales]);
-
-  useEffect(() => {
-    localStorage.setItem('kiosk_registers', JSON.stringify(registers));
-  }, [registers]);
-
-  const addProduct = (product: Omit<Product, 'id'>) => {
-    const newProduct = { ...product, id: Date.now().toString() };
-    setProducts([...products, newProduct]);
-    toast.success('Producto agregado');
-  };
-
-  const updateProduct = (id: string, updates: Partial<Product>) => {
-    setProducts(products.map(p => p.id === id ? { ...p, ...updates } : p));
-  };
-
-  const deleteProduct = (id: string) => {
-    setProducts(products.filter(p => p.id !== id));
-    toast.error('Producto eliminado');
-  };
-
-  const updateRegisterCart = (registerId: string, newCart: SaleItem[]) => {
-    setRegisters(prev => prev.map(reg => reg.id === registerId ? { ...reg, cart: newCart } : reg));
-  };
-
-  const processSale = (registerId: string, items: SaleItem[], paymentMethod: Sale['paymentMethod']) => {
-    if (items.length === 0) { toast.error('El carrito está vacío'); return null; }
-    const quantities = new Map<string, number>();
-    for (const item of items) quantities.set(item.productId, (quantities.get(item.productId) || 0) + item.quantity);
-    for (const [productId, quantity] of quantities) {
-      const product = products.find(p => p.id === productId);
-      if (!product || !Number.isFinite(quantity) || quantity <= 0 || product.stock < quantity) {
-        toast.error(`Stock insuficiente para ${product?.name || 'un producto'}`);
-        return null;
-      }
-    }
-    const saleTotal = items.reduce((acc, item) => acc + item.total, 0);
-    if (!Number.isFinite(saleTotal) || saleTotal <= 0) { toast.error('El total de la venta no es válido'); return null; }
-    const newSale: Sale = { id: `TK-${Date.now()}`, timestamp: new Date(), items: items.map(item => ({ ...item })), total: saleTotal, paymentMethod, registerId };
-    setProducts(prev => prev.map(p => {
-      const quantity = quantities.get(p.id) || 0;
-      return quantity ? { ...p, stock: p.stock - quantity } : p;
-    }));
-    setSales(prev => [...prev, newSale]);
-    setRegisters(prev => prev.map(reg => reg.id === registerId ? { ...reg, cart: [], balance: reg.balance + saleTotal } : reg));
-    return newSale;
-  };
-
-  const renderView = () => {
-    switch (view) {
-      case AppView.DASHBOARD:
-        return <Dashboard products={products} sales={sales} registers={registers} />;
-      case AppView.INVENTORY:
-        return <Inventory products={products} onAdd={addProduct} onUpdate={updateProduct} onDelete={deleteProduct} />;
-      case AppView.POS:
-        return (
-          <POS 
-            products={products} 
-            registers={registers}
-            activeRegisterId={activeRegisterId}
-            onSelectRegister={setActiveRegisterId}
-            onUpdateCart={(cart) => activeRegisterId && updateRegisterCart(activeRegisterId, cart)}
-            onCompleteSale={(items, method) => activeRegisterId ? processSale(activeRegisterId, items, method) : null} 
-          />
-        );
-      case AppView.SALES:
-        return <SalesHistory sales={sales} />;
-      case AppView.AI_INSIGHTS:
-        return <AIConsultant products={products} sales={sales} />;
-      default:
-        return <Dashboard products={products} sales={sales} registers={registers} />;
-    }
-  };
-
-  return (
-    <div className="flex min-h-screen bg-slate-50">
-      <Sidebar currentView={view} onViewChange={setView} items={NAVIGATION_ITEMS} />
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto max-h-screen">
-        <div className="max-w-[1600px] mx-auto">
-          {renderView()}
-        </div>
-      </main>
-      <Toaster position="top-center" />
-    </div>
-  );
-};
-
-export default App;
+import React,{useEffect,useState} from 'react';
+import {Product,Sale,AppView,SaleItem,RegisterSession,Supplier,Purchase,StockAdjustment,CashMovement} from './types';
+import {INITIAL_PRODUCTS,NAVIGATION_ITEMS} from './constants';
+import Sidebar from './components/Sidebar';import Dashboard from './components/Dashboard';import Inventory from './components/Inventory';import POS from './components/POS';import SalesHistory from './components/SalesHistory';import Operations from './components/Operations';import AIConsultant from './components/AIConsultant';import {Toaster,toast} from 'react-hot-toast';
+const INITIAL_REGISTERS:RegisterSession[]=['Terminal 01','Terminal 02','Terminal 03','Terminal 04','Terminal 05'].map((name,i)=>({id:String(i+1),name,cart:[],balance:0,isOpen:false,openingAmount:0}));
+const read=<T,>(key:string,fallback:T):T=>{try{const v=localStorage.getItem(key);return v?JSON.parse(v):fallback}catch{return fallback}};
+const App:React.FC=()=>{
+ const [view,setView]=useState<AppView>(AppView.DASHBOARD);
+ const [products,setProducts]=useState<Product[]>(()=>read('kiosk_products',INITIAL_PRODUCTS));
+ const [sales,setSales]=useState<Sale[]>(()=>read<any[]>('kiosk_sales',[]).map((s:any)=>({...s,timestamp:new Date(s.timestamp),status:s.status||'completed'})));
+ const [registers,setRegisters]=useState<RegisterSession[]>(()=>read<RegisterSession[]>('kiosk_registers',INITIAL_REGISTERS).map(r=>({...r,isOpen:r.isOpen??true,openingAmount:r.openingAmount??r.balance??0})));
+ const [suppliers,setSuppliers]=useState<Supplier[]>(()=>read('kiosk_suppliers',[]));
+ const [purchases,setPurchases]=useState<Purchase[]>(()=>read<any[]>('kiosk_purchases',[]).map((x:any)=>({...x,timestamp:new Date(x.timestamp)})));
+ const [adjustments,setAdjustments]=useState<StockAdjustment[]>(()=>read<any[]>('kiosk_adjustments',[]).map((x:any)=>({...x,timestamp:new Date(x.timestamp)})));
+ const [cashMovements,setCashMovements]=useState<CashMovement[]>(()=>read<any[]>('kiosk_cash_movements',[]).map((x:any)=>({...x,timestamp:new Date(x.timestamp)})));
+ const [activeRegisterId,setActiveRegisterId]=useState<string|null>(null);
+ useEffect(()=>{const all={kiosk_products:products,kiosk_sales:sales,kiosk_registers:registers,kiosk_suppliers:suppliers,kiosk_purchases:purchases,kiosk_adjustments:adjustments,kiosk_cash_movements:cashMovements};try{Object.entries(all).forEach(([k,v])=>localStorage.setItem(k,JSON.stringify(v)))}catch{toast.error('No se pudieron guardar los datos locales: exportá un respaldo y liberá espacio.')}},[products,sales,registers,suppliers,purchases,adjustments,cashMovements]);
+ const addProduct=(product:Omit<Product,'id'>)=>{if(products.some(p=>p.barcode===product.barcode)){toast.error('Código duplicado');return}setProducts(p=>[...p,{...product,id:crypto.randomUUID()}]);toast.success('Producto agregado')};
+ const updateProduct=(id:string,updates:Partial<Product>)=>{if(updates.barcode&&products.some(p=>p.id!==id&&p.barcode===updates.barcode)){toast.error('Código duplicado');return}setProducts(ps=>ps.map(p=>p.id===id?{...p,...updates}:p));setRegisters(rs=>rs.map(r=>({...r,cart:r.cart.map(i=>{if(i.productId!==id)return i;const np={...products.find(p=>p.id===id)!,...updates};const quantity=Math.min(i.quantity,Math.max(0,np.stock));return {...i,name:np.name,price:np.price,quantity,total:np.price*quantity}}).filter(i=>i.quantity>0)})));toast.success('Producto actualizado; carritos sincronizados')};
+ const deleteProduct=(id:string)=>{const name=products.find(p=>p.id===id)?.name;if(!confirm(`¿Eliminar ${name||'este producto'}? Las ventas históricas se conservarán.`))return;setProducts(ps=>ps.filter(p=>p.id!==id));setRegisters(rs=>rs.map(r=>({...r,cart:r.cart.filter(i=>i.productId!==id)})));toast.success('Producto eliminado')};
+ const updateRegisterCart=(id:string,cart:SaleItem[])=>setRegisters(rs=>rs.map(r=>r.id===id?{...r,cart}:r));
+ const processSale=(registerId:string,items:SaleItem[],paymentMethod:Sale['paymentMethod'])=>{
+  const reg=registers.find(r=>r.id===registerId);if(!reg?.isOpen){toast.error('Abrí la caja antes de vender');return null}if(!items.length){toast.error('Carrito vacío');return null}
+  const qty=new Map<string,number>();items.forEach(i=>qty.set(i.productId,(qty.get(i.productId)||0)+i.quantity));
+  for(const [id,n] of qty){const p=products.find(x=>x.id===id);if(!p||!Number.isInteger(n)||n<=0||p.stock<n){toast.error(`Stock insuficiente: ${p?.name||'producto'}`);return null}}
+  const saleItems=items.map(i=>{const p=products.find(x=>x.id===i.productId)!;return {...i,name:p.name,price:p.price,total:p.price*i.quantity}});const total=saleItems.reduce((a,i)=>a+i.total,0);if(!Number.isFinite(total)||total<=0){toast.error('Importe inválido');return null}
+  const sale:Sale={id:`TK-${Date.now()}`,timestamp:new Date(),items:saleItems,total,paymentMethod,registerId,status:'completed'};
+  setProducts(ps=>ps.map(p=>qty.has(p.id)?{...p,stock:p.stock-qty.get(p.id)!}:p));setSales(ss=>[...ss,sale]);setRegisters(rs=>rs.map(r=>r.id===registerId?{...r,cart:[],balance:r.balance+(paymentMethod==='cash'?total:0)}:r));return sale;
+ };
+ const openRegister=(id:string,amount:number)=>{setRegisters(rs=>rs.map(r=>r.id===id?{...r,isOpen:true,openingAmount:amount,openedAt:new Date().toISOString(),balance:amount}:r));setCashMovements(ms=>[...ms,{id:crypto.randomUUID(),registerId:id,timestamp:new Date(),type:'in',amount,reason:'Fondo de apertura'}]);toast.success('Caja abierta')};
+ const cashMove=(id:string,type:'in'|'out',amount:number,reason:string)=>{setCashMovements(ms=>[...ms,{id:crypto.randomUUID(),registerId:id,timestamp:new Date(),type,amount,reason}]);setRegisters(rs=>rs.map(r=>r.id===id?{...r,balance:r.balance+(type==='in'?amount:-amount)}:r));toast.success('Movimiento registrado')};
+ const closeRegister=(id:string,counted:number)=>{const r=registers.find(x=>x.id===id);if(!r)return;const expected=(r.openingAmount||0)+cashMovements.filter(m=>m.registerId===id&&m.type==='in'&&m.reason!=='Fondo de apertura'&&(!r.openedAt||m.timestamp>=new Date(r.openedAt))).reduce((a,m)=>a+m.amount,0)-cashMovements.filter(m=>m.registerId===id&&m.type==='out'&&(!r.openedAt||m.timestamp>=new Date(r.openedAt))).reduce((a,m)=>a+m.amount,0)+sales.filter(s=>s.registerId===id&&s.paymentMethod==='cash'&&s.status!=='voided'&&new Date(s.timestamp).toISOString()>=(r.openedAt||'')).reduce((a,s)=>a+s.total,0);
+  const diff=counted-expected;setCashMovements(ms=>[...ms,{id:crypto.randomUUID(),registerId:id,timestamp:new Date(),type:'close',amount:counted,reason:`Arqueo; esperado $${expected.toLocaleString('es-AR')}; diferencia $${diff.toLocaleString('es-AR')}`}]);setRegisters(rs=>rs.map(x=>x.id===id?{...x,isOpen:false,cart:[],balance:counted}:x));toast.success(`Caja cerrada. Diferencia: $${diff.toLocaleString('es-AR')}`)};
+ const voidSale=(id:string,reason:string)=>{const sale=sales.find(s=>s.id===id);if(!sale||sale.status==='voided')return; if(!confirm(`Anular ticket ${id}? Se reintegrarán productos al stock; no se procesa devolución de dinero.`))return;setSales(ss=>ss.map(s=>s.id===id?{...s,status:'voided',voidReason:reason}:s));setProducts(ps=>ps.map(p=>{const q=sale.items.filter(i=>i.productId===p.id).reduce((a,i)=>a+i.quantity,0);return q?{...p,stock:p.stock+q}:p}));toast.success('Venta anulada y stock restituido. Ajustá la caja manualmente si hubo devolución en efectivo.')};
+ const addSupplier=(s:Omit<Supplier,'id'>)=>setSuppliers(ss=>[...ss,{...s,id:crypto.randomUUID()}]);const deleteSupplier=(id:string)=>setSuppliers(ss=>ss.filter(s=>s.id!==id));
+ const purchase=(supplierId:string,productId:string,quantity:number,unitCost:number)=>{const product=products.find(p=>p.id===productId);if(!product)return;const item={productId,name:product.name,quantity,unitCost,total:quantity*unitCost};setPurchases(ps=>[...ps,{id:`OC-${Date.now()}`,supplierId,timestamp:new Date(),items:[item],total:item.total,status:'received'}]);setProducts(ps=>ps.map(x=>x.id===productId?{...x,stock:x.stock+quantity,cost:unitCost}:x))};
+ const adjust=(productId:string,delta:number,reason:string)=>{const product=products.find(p=>p.id===productId);if(!product)return;if(product.stock+delta<0){toast.error('El ajuste no puede dejar stock negativo');return}setProducts(ps=>ps.map(x=>x.id===productId?{...x,stock:x.stock+delta}:x));setAdjustments(as=>[...as,{id:crypto.randomUUID(),productId,productName:product.name,timestamp:new Date(),delta,reason}]);toast.success('Ajuste registrado')};
+ const exportBackup=()=>{const data={format:'luxekiosko-backup-v1',exportedAt:new Date().toISOString(),products,sales,registers,suppliers,purchases,adjustments,cashMovements};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download=`luxekiosko-respaldo-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+ const importBackup=(file:File)=>{const reader=new FileReader();reader.onload=()=>{try{const d=JSON.parse(String(reader.result));if(d.format!=='luxekiosko-backup-v1'||!Array.isArray(d.products)||!Array.isArray(d.sales))throw Error('Formato inválido');if(!confirm('Restaurar reemplazará todos los datos locales actuales. ¿Continuar?'))return;setProducts(d.products);setSales(d.sales.map((s:any)=>({...s,timestamp:new Date(s.timestamp)})));setRegisters(d.registers||INITIAL_REGISTERS);setSuppliers(d.suppliers||[]);setPurchases((d.purchases||[]).map((x:any)=>({...x,timestamp:new Date(x.timestamp)})));setAdjustments((d.adjustments||[]).map((x:any)=>({...x,timestamp:new Date(x.timestamp)})));setCashMovements((d.cashMovements||[]).map((x:any)=>({...x,timestamp:new Date(x.timestamp)})));toast.success('Respaldo restaurado')}catch{toast.error('Archivo de respaldo inválido o incompatible')}};reader.readAsText(file)};
+ const render=()=>{switch(view){case AppView.DASHBOARD:return <Dashboard products={products} sales={sales} registers={registers}/>;case AppView.INVENTORY:return <Inventory products={products} onAdd={addProduct} onUpdate={updateProduct} onDelete={deleteProduct}/>;case AppView.POS:return <POS products={products} registers={registers} activeRegisterId={activeRegisterId} onSelectRegister={(id)=>{if(id&&!registers.find(r=>r.id===id)?.isOpen){toast.error('Primero abrí esta caja desde Compras y caja');return}setActiveRegisterId(id)}} onUpdateCart={cart=>activeRegisterId&&updateRegisterCart(activeRegisterId,cart)} onCompleteSale={(items,m)=>activeRegisterId?processSale(activeRegisterId,items,m):null}/>;case AppView.SALES:return <SalesHistory sales={sales} onVoid={voidSale}/>;case AppView.OPERATIONS:return <Operations products={products} suppliers={suppliers} purchases={purchases} adjustments={adjustments} registers={registers} cashMovements={cashMovements} sales={sales} onAddSupplier={addSupplier} onDeleteSupplier={deleteSupplier} onPurchase={purchase} onAdjust={adjust} onOpenRegister={openRegister} onCashMove={cashMove} onCloseRegister={closeRegister} onExport={exportBackup} onImport={importBackup}/>;case AppView.AI_INSIGHTS:return <AIConsultant products={products} sales={sales}/>;default:return <Dashboard products={products} sales={sales} registers={registers}/>}};
+ return <div className="flex min-h-screen bg-slate-50"><Sidebar currentView={view} onViewChange={setView} items={NAVIGATION_ITEMS}/><main className="flex-1 p-4 md:p-8 overflow-y-auto max-h-screen"><div className="max-w-[1600px] mx-auto">{render()}</div></main><Toaster position="top-center"/></div>
+};export default App;

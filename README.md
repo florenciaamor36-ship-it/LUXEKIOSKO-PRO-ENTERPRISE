@@ -1,20 +1,15 @@
-# LuxeKiosko Pro — prototipo web
+# LuxeKiosko Pro — prototipo local
 
-Prototipo de gestión para kiosco/retail con panel, productos, punto de venta, historial y terminales. Incluye un build web verificable mediante GitHub Actions.
+Incluye panel, inventario, POS, historial, compras recibidas, lista de proveedores, ajustes de stock, arqueo básico por caja, reportes aproximados y exportación/restauración de respaldo JSON.
 
-## Estado y límites
-- Los datos se guardan solo en `localStorage` del navegador usado. No hay backend ni sincronización entre equipos/usuarios: no usar como registro único de caja/stock sin copias de seguridad.
-- Esta rama valida stock antes de cerrar una venta y corrige el build automatizado.
-- No es todavía un ERP completo: faltan compras/proveedores, contabilidad, facturación fiscal argentina, usuarios/permisos, auditoría y almacenamiento central.
-- El consultor IA está desactivado en el cliente para evitar exponer credenciales. Para reactivarlo se necesita un backend seguro.
-- La impresión de tickets es visual; no constituye factura fiscal ni comprobante autorizado por ARCA.
+## Límites importantes
+- Todos los datos quedan en `localStorage` del navegador y equipo actual. No hay sincronización, usuarios, control de acceso ni almacenamiento confiable. Exportá respaldos regularmente.
+- No usar todavía como única fuente para caja/inventario de un comercio real. No se ha hecho prueba funcional completa en navegador/dispositivo ni prueba física de impresora.
+- Tickets son internos; no son facturas ni comprobantes autorizados por ARCA. No hay integración fiscal.
+- Compras se registran como recibidas y aumentan stock; aún no hay pagos a proveedores, cuentas corrientes ni recepción parcial.
+- Anular una venta conserva el historial y repone stock, pero la devolución de dinero debe registrarse en caja manualmente.
+- Reporte de margen es una estimación con el costo actual, sin impuestos ni gastos.
+- Consultor IA permanece desactivado en el cliente hasta crear un backend seguro.
 
 ## Desarrollo
-Requiere Node.js 20 o superior.
-
-```sh
-npm install
-npm run build
-```
-
-GitHub Actions corre el mismo build al enviar cambios a `main` o `zapia/erp-fix` y publica `dist/` como artefacto.
+Node.js 20+: `npm install` y `npm run build`. GitHub Actions verifica el build para `main` y `zapia/erp-fix`.
